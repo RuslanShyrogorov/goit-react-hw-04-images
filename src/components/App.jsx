@@ -4,7 +4,7 @@ import { Container } from './App.styled';
 
 export default class App extends Component {
   render() {
-    return <Container>App</Container>;
+    return <Container>Здесь будет приложение</Container>;
   }
 }
 
