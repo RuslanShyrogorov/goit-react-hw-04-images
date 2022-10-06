@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Box } from 'components/constans/Box';
 import { pixabayApi } from 'components/servises/searchApi';
@@ -8,105 +8,82 @@ import Modal from 'components/Modal/Modal';
 import { GalleryList } from './ImageGallery.styled';
 import Loader from 'components/Loader/Loader';
 
-export default class ImageGallery extends Component {
-  state = {
-    images: [],
-    loading: false,
-    error: null,
-    modalOpen: false,
-    modalImg: '',
+export default function ImageGallery({ search, page, onLoadMore }) {
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalImg, setModalImg] = useState('');
+
+  useEffect(() => {
+    setImages([]);
+  }, [search]);
+
+  useEffect(() => {
+    if (!search) return;
+
+    const fetchImages = async () => {
+      setLoading(true);
+
+      try {
+        const data = await pixabayApi(search, page);
+        setImages(prevImages => [...prevImages, ...data.hits]);
+      } catch (error) {
+        setError(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchImages();
+  }, [search, page]);
+
+  const loadMore = () => {
+    onLoadMore();
   };
 
-  componentDidUpdate(prevProps, _) {
-    const { search, page } = this.props;
-
-    if (prevProps.search !== search) {
-      this.setState({ images: [] });
-    }
-
-    if (prevProps.search !== search || prevProps.page !== page) {
-      this.fetchImages();
-    }
-  }
-
-  async fetchImages() {
-    const { search, page } = this.props;
-
-    this.setState({ loading: true });
-
-    try {
-      const data = await pixabayApi(search, page);
-
-      this.setState(({ images }) => {
-        return {
-          images: [...images, ...data.hits],
-        };
-      });
-    } catch (error) {
-      this.setState({
-        error,
-      });
-    } finally {
-      this.setState({ loading: false });
-    }
-  }
-
-  loadMore = () => {
-    this.props.onLoadMore();
+  const openModal = modalImg => {
+    setModalOpen(true);
+    setModalImg(modalImg);
   };
 
-  openModal = modalImg => {
-    this.setState({
-      modalOpen: true,
-      modalImg,
-    });
+  const closeModal = () => {
+    setModalOpen(false);
+    setModalImg('');
   };
 
-  closeModal = () => {
-    this.setState({
-      modalOpen: false,
-      modalImg: '',
-    });
-  };
+  const isImages = Boolean(images.length);
 
-  render() {
-    // const { items, ,  } = this.state;
-    const { loadMore, closeModal, openModal } = this;
-    const { images, modalImg, modalOpen, error, loading } = this.state;
-    const isImages = Boolean(images.length);
+  return (
+    <Box as="section">
+      {error && <p>Try later...</p>}
+      {loading && <Loader />}
+      {isImages && (
+        <GalleryList>
+          {images.map(({ id, tags, webformatURL, largeImageURL }) => {
+            return (
+              <ImageGalleryItem
+                key={id}
+                alt={tags}
+                webformatURL={webformatURL}
+                largeImageURL={largeImageURL}
+                onClick={openModal}
+              />
+            );
+          })}
+        </GalleryList>
+      )}
 
-    return (
-      <Box as="section">
-        {error && <p>Try later...</p>}
-        {loading && <Loader />}
-        {isImages && (
-          <GalleryList>
-            {images.map(({ id, tags, webformatURL, largeImageURL }) => {
-              return (
-                <ImageGalleryItem
-                  key={id}
-                  alt={tags}
-                  webformatURL={webformatURL}
-                  largeImageURL={largeImageURL}
-                  onClick={openModal}
-                />
-              );
-            })}
-          </GalleryList>
-        )}
+      {isImages && (
+        <Button text="Loade more" type="button" onClick={loadMore}></Button>
+      )}
 
-        {isImages && (
-          <Button text="Loade more" type="button" onClick={loadMore}></Button>
-        )}
-
-        {modalOpen && (
-          <Modal onClose={closeModal}>
-            <img src={modalImg} alt="" />
-          </Modal>
-        )}
-      </Box>
-    );
-  }
+      {modalOpen && (
+        <Modal onClose={closeModal}>
+          <img src={modalImg} alt="" />
+        </Modal>
+      )}
+    </Box>
+  );
 }
 
 ImageGallery.propTypes = {
